@@ -45,6 +45,7 @@ var animation;
 function FrameAction(){
     animation = requestAnimationFrame(FrameAction);
     timer++;
+    ($("#score")).html("점수: "+parseInt(timer/100));
 
     ctx.clearRect(0,0, canvas.width, canvas.height);
 
