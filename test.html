@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <p id="gsensor">00</p>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script>
+        let gravitySensor = new GravitySensor({frequency: 60});
+
+        gravitySensor.addEventListener("reading", e => {
+            alert("Gravity along the X-axis"+ gravitySensor.x);
+            console.log(`Gravity along the X-axis ${gravitySensor.x}`);
+            console.log(`Gravity along the Y-axis ${gravitySensor.y}`);
+            console.log(`Gravity along the Z-axis ${gravitySensor.z}`);
+            ($("#gsensor")).html("Gravity along the X-axis: "+gravitySensor.x
+                            +"\nGravity along the Y-axis: "+gravitySensor.y
+                            +"\nGravity along the Z-axis: "+gravitySensor.z);
+        });
+
+        gravitySensor.start();
+    </script>
+    <script>
+        let acl = new Accelerometer({frequency: 60});
+        acl.addEventListener('reading', () => {
+            alert("Acceleration along the X-axis"+ acl.x);
+            console.log("Acceleration along the X-axis " + acl.x);
+            console.log("Acceleration along the Y-axis " + acl.y);
+            console.log("Acceleration along the Z-axis " + acl.z);
+        });
+
+        acl.start();
+    </script>
+</body>
+</html>
