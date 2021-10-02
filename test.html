@@ -17,9 +17,9 @@
             console.log(`Gravity along the X-axis ${gravitySensor.x}`);
             console.log(`Gravity along the Y-axis ${gravitySensor.y}`);
             console.log(`Gravity along the Z-axis ${gravitySensor.z}`);
-            ($("#gsensor")).html("Gravity along the X-axis: "+gravitySensor.x
-                            +"\nGravity along the Y-axis: "+gravitySensor.y
-                            +"\nGravity along the Z-axis: "+gravitySensor.z);
+            ($("#gsensor")).html("Gravity along the X-axis: "+gravitySensor.x.toFixed(1)
+                            +"\nGravity along the Y-axis: "+gravitySensor.y.toFixed(1)
+                            +"\nGravity along the Z-axis: "+gravitySensor.z.toFixed(1));
         });
 
         gravitySensor.start();
@@ -27,9 +27,9 @@
     <script>
         let acl = new Accelerometer({frequency: 60});
         acl.addEventListener('reading', () => {
-            ($("#asensor")).html("Acceleration along the X-axis " + acl.x
-                                +"Acceleration along the Y-axis " + acl.y
-                                +"Acceleration along the Z-axis " + acl.z);
+            ($("#asensor")).html("Acceleration along the X-axis " + acl.x.toFixed(1)
+                                +"Acceleration along the Y-axis " + acl.y.toFixed(1)
+                                +"Acceleration along the Z-axis " + acl.z.toFixed(1));
             console.log("Acceleration along the X-axis " + acl.x);
             console.log("Acceleration along the Y-axis " + acl.y);
             console.log("Acceleration along the Z-axis " + acl.z);
