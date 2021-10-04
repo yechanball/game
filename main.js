@@ -216,7 +216,7 @@ gravitySensor.addEventListener("reading", e => {
         upKey = false;
         downKey = true;
     }
-    if(gravitySensor.y > 0){
+    if(gravitySensor.y < 0){
         upKey = true;
         downKey = false;
     }
