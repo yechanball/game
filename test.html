@@ -9,6 +9,7 @@
 <body>
     <p id="gsensor"></p>
     <p id="asensor"></p>
+    <p id="csensor"></p>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script>
         let gravitySensor = new GravitySensor({frequency: 60});
@@ -36,6 +37,19 @@
         });
 
         acl.start();
+    </script>
+    <script>
+        let gyroscope = new Gyroscope({frequency: 60});
+
+        gyroscope.addEventListener('reading', e => {
+            ($("#csensor")).html("Angular velocity along the X-axis " + gyroscope.x.toFixed(1)
+                                +"Angular velocity along the Y-axis " + gyroscope.y.toFixed(1)
+                                +"Angular velocity along the Z-axis " + gyroscope.z.toFixed(1));
+            console.log("Angular velocity along the X-axis " + gyroscope.x);
+            console.log("Angular velocity along the Y-axis " + gyroscope.y);
+            console.log("Angular velocity along the Z-axis " + gyroscope.z);
+        });
+        gyroscope.start();
     </script>
 </body>
 </html>
