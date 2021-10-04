@@ -116,26 +116,20 @@ function FrameAction(){
     let gravitySensor = new GravitySensor({frequency: 60});
 
     gravitySensor.addEventListener("reading", e => {
-        console.log(`Gravity along the X-axis ${gravitySensor.x}`);
-        console.log(`Gravity along the Y-axis ${gravitySensor.y}`);
-        console.log(`Gravity along the Z-axis ${gravitySensor.z}`);
         // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
         if(Ship.x > 0){
-            Ship.x -= gravitySensor.x;
+            Ship.x -= 4;
         }
         if(Ship.x < (canvas.width-Ship.width)){
-            Ship.x -= gravitySensor.x;
+            Ship.x += 4;
         }
         // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
         if(Ship.y > 0){
-            Ship.y -= gravitySensor.y;
+            Ship.y -= 4;
         }
         if(Ship.y < (canvas.height-Ship.height)){
-            Ship.y += gravitySensor.y;
+            Ship.y += 4;
         }
-        ($("#gsensor")).html("Gravity along the X-axis: "+gravitySensor.x.toFixed(1)
-                                +"\nGravity along the Y-axis: "+gravitySensor.y.toFixed(1)
-                                +"\nGravity along the Z-axis: "+gravitySensor.z.toFixed(1));
     });
 
     gravitySensor.start();
