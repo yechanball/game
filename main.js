@@ -61,6 +61,7 @@ var enemyArr = [];
 var enemyFreq = 200;
 var enemySpeed = 2;
 var bulletArr = [];
+var bulletFreq = 20;
 var bulletSpeed = 4;
 
 var animation;
@@ -91,7 +92,7 @@ function FrameAction(){
         a.draw();
     })
 
-    if(timer % 30 == 0){
+    if(timer % bulletFreq == 0){
         var bullet = new Bullet();
         bulletArr.push(bullet);
     }
@@ -111,28 +112,6 @@ function FrameAction(){
 
         a.draw();
     })
-
-    // sensor control
-    let gravitySensor = new GravitySensor({frequency: 60});
-
-    gravitySensor.addEventListener("reading", e => {
-        // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
-        if(Ship.x > 0){
-            Ship.x -= 4;
-        }
-        if(Ship.x < (canvas.width-Ship.width)){
-            Ship.x += 4;
-        }
-        // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
-        if(Ship.y > 0){
-            Ship.y -= 4;
-        }
-        if(Ship.y < (canvas.height-Ship.height)){
-            Ship.y += 4;
-        }
-    });
-
-    gravitySensor.start();
 
     // key control
     if(leftKey == true){
@@ -219,3 +198,28 @@ document.onkeyup = function(e){
             break;
     }
 };
+
+let gravitySensor = new GravitySensor({frequency: 60});
+
+gravitySensor.addEventListener("reading", e => {
+    // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
+    if(gravitySensor.x > 0){
+        leftKey = true;
+        rightKey = false;
+    }
+    if(gravitySensor.x < 0){
+        leftKey = false;
+        rightKey = true;
+    }
+    // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
+    if(gravitySensor.y > 0){
+        upKey = false;
+        downKey = true;
+    }
+    if(gravitySensor.y > 0){
+        upKey = true;
+        downKey = false;
+    }
+});
+
+gravitySensor.start();
