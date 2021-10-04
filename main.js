@@ -106,7 +106,7 @@ function FrameAction(){
 
         enemyArr.forEach((b, j, p)=>{
             if(checkCrash(a, b)){
-                window.navigator.vibrate(100);
+                window.navigator.vibrate([500]);
                 p.splice(j, 1);
                 o.splice(i, 1);
                 score++;
