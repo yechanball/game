@@ -113,7 +113,24 @@ function FrameAction(){
     })
 
     // sensor control
-    sensorControl(Ship, canvas);
+    let gravitySensor = new GravitySensor({frequency: 60});
+
+    // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
+    if(Ship.x > 0){
+        Ship.x -= gravitySensor.x;
+    }
+    if(Ship.x < (canvas.width-Ship.width)){
+        Ship.x -= gravitySensor.x;
+    }
+    // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
+    if(Ship.y > 0){
+        Ship.y -= gravitySensor.y;
+    }
+    if(Ship.y < (canvas.height-Ship.height)){
+        Ship.y += gravitySensor.y;
+    }
+
+    gravitySensor.start();
 
     // key control
     if(leftKey == true){
