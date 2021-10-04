@@ -115,20 +115,28 @@ function FrameAction(){
     // sensor control
     let gravitySensor = new GravitySensor({frequency: 60});
 
-    // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
-    if(Ship.x > 0){
-        Ship.x -= gravitySensor.x;
-    }
-    if(Ship.x < (canvas.width-Ship.width)){
-        Ship.x -= gravitySensor.x;
-    }
-    // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
-    if(Ship.y > 0){
-        Ship.y -= gravitySensor.y;
-    }
-    if(Ship.y < (canvas.height-Ship.height)){
-        Ship.y += gravitySensor.y;
-    }
+    gravitySensor.addEventListener("reading", e => {
+        console.log(`Gravity along the X-axis ${gravitySensor.x}`);
+        console.log(`Gravity along the Y-axis ${gravitySensor.y}`);
+        console.log(`Gravity along the Z-axis ${gravitySensor.z}`);
+        // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
+        if(Ship.x > 0){
+            Ship.x -= gravitySensor.x;
+        }
+        if(Ship.x < (canvas.width-Ship.width)){
+            Ship.x -= gravitySensor.x;
+        }
+        // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
+        if(Ship.y > 0){
+            Ship.y -= gravitySensor.y;
+        }
+        if(Ship.y < (canvas.height-Ship.height)){
+            Ship.y += gravitySensor.y;
+        }
+        ($("#gsensor")).html("Gravity along the X-axis: "+gravitySensor.x.toFixed(1)
+                                +"\nGravity along the Y-axis: "+gravitySensor.y.toFixed(1)
+                                +"\nGravity along the Z-axis: "+gravitySensor.z.toFixed(1));
+    });
 
     gravitySensor.start();
 
@@ -217,25 +225,3 @@ document.onkeyup = function(e){
             break;
     }
 };
-
-// Input sensor from mobile device
-function sensorControl(ship, canvas){
-    let gravitySensor = new GravitySensor({frequency: 60});
-
-    // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
-    if(ship.x > 0){
-        ship.x -= gravitySensor.x;
-    }
-    if(ship.x < (canvas.width-ship.width)){
-        ship.x -= gravitySensor.x;
-    }
-    // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
-    if(ship.y > 0){
-        ship.y -= gravitySensor.y;
-    }
-    if(ship.y < (canvas.height-ship.height)){
-        ship.y += gravitySensor.y;
-    }
-
-    gravitySensor.start();
-}
