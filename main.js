@@ -61,7 +61,7 @@ var enemyArr = [];
 var enemyFreq = 200;
 var enemySpeed = 2;
 var bulletArr = [];
-var bulletFreq = 20;
+var bulletFreq = 25;
 var bulletSpeed = 4;
 
 var animation;
@@ -86,6 +86,7 @@ function FrameAction(){
         a.x+=3*(2-Math.floor(Math.random()*5));
 
         if(checkCrash(Ship, a)){
+            window.navigator.vibrate([500,200,500,200,500]);
             stopGame();
         }
 
@@ -105,7 +106,9 @@ function FrameAction(){
 
         enemyArr.forEach((b, j, p)=>{
             if(checkCrash(a, b)){
+                window.navigator.vibrate(100);
                 p.splice(j, 1);
+                o.splice(i, 1);
                 score++;
             }
         })
@@ -116,22 +119,22 @@ function FrameAction(){
     // key control
     if(leftKey == true){
         if(Ship.x > 0){
-            Ship.x-=4;
+            Ship.x-=3;
         }
     }
     if(rightKey == true){
         if(Ship.x < (canvas.width-Ship.width)){
-            Ship.x+=4;
+            Ship.x+=3;
         }
     }
     if(upKey == true){
         if(Ship.y > 0){
-            Ship.y-=4;
+            Ship.y-=3;
         }
     }
     if(downKey == true){
         if(Ship.y < (canvas.height-Ship.height)){
-            Ship.y+=4;
+            Ship.y+=3;
         }
     }
 
