@@ -1,5 +1,6 @@
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
+var scoreElement = document.getElementById('score');
 
 canvas.width = 300;
 canvas.height = window.innerHeight - 100;
@@ -63,58 +64,82 @@ var enemySpeed = 2;
 var bulletArr = [];
 var bulletFreq = 25;
 var bulletSpeed = 4;
+var nextEnemySpawnAt = 0;
 
 var animation;
+
+function randomEnemyDelay(){
+    return Math.floor(Math.random()*enemyFreq) + 20;
+}
+
+function triggerVibration(pattern){
+    if(window.navigator && typeof window.navigator.vibrate === "function"){
+        window.navigator.vibrate(pattern);
+    }
+}
 
 function FrameAction(){
     animation = requestAnimationFrame(FrameAction);
     timer++;
-    ($("#score")).html("점수: "+(score+parseInt(timer/100)));
+    scoreElement.textContent = "점수: " + (score + Math.floor(timer/100));
 
     ctx.clearRect(0,0, canvas.width, canvas.height);
 
-    if(timer % Math.floor(Math.random()*enemyFreq) == 0){
+    if(timer >= nextEnemySpawnAt){
         var enemy = new Enemy();
         enemyArr.push(enemy);
+        nextEnemySpawnAt = timer + randomEnemyDelay();
     }
 
-    enemyArr.forEach((a, i, o)=>{
-        if(a.y > canvas.height){
-            o.splice(i, 1);
-        }
-        a.y+=enemySpeed;
-        a.x+=3*(2-Math.floor(Math.random()*5));
+    for(var i = enemyArr.length - 1; i >= 0; i--){
+        var currentEnemy = enemyArr[i];
+        currentEnemy.y += enemySpeed;
+        currentEnemy.x += 3*(2-Math.floor(Math.random()*5));
 
-        if(checkCrash(Ship, a)){
-            window.navigator.vibrate([500,200,500,200,500]);
+        if(currentEnemy.y > canvas.height){
+            enemyArr.splice(i, 1);
+            continue;
+        }
+
+        if(checkCrash(Ship, currentEnemy)){
+            triggerVibration([500,200,500,200,500]);
             stopGame();
+            return;
         }
 
-        a.draw();
-    })
+        currentEnemy.draw();
+    }
 
     if(timer % bulletFreq == 0){
         var bullet = new Bullet();
         bulletArr.push(bullet);
     }
 
-    bulletArr.forEach((a, i, o)=>{
-        if(a.y < 0){
-            o.splice(i, 1);
+    for(var bulletIndex = bulletArr.length - 1; bulletIndex >= 0; bulletIndex--){
+        var currentBullet = bulletArr[bulletIndex];
+        currentBullet.y -= bulletSpeed;
+
+        if(currentBullet.y < 0){
+            bulletArr.splice(bulletIndex, 1);
+            continue;
         }
-        a.y-=bulletSpeed;
 
-        enemyArr.forEach((b, j, p)=>{
-            if(checkCrash(a, b)){
-                window.navigator.vibrate([100]);
-                p.splice(j, 1);
-                o.splice(i, 1);
+        var hitEnemy = false;
+        for(var enemyIndex = enemyArr.length - 1; enemyIndex >= 0; enemyIndex--){
+            if(checkCrash(currentBullet, enemyArr[enemyIndex])){
+                triggerVibration([100]);
+                enemyArr.splice(enemyIndex, 1);
+                bulletArr.splice(bulletIndex, 1);
                 score++;
+                hitEnemy = true;
+                break;
             }
-        })
+        }
 
-        a.draw();
-    })
+        if(!hitEnemy){
+            currentBullet.draw();
+        }
+    }
 
     // key control
     if(leftKey == true){
@@ -146,15 +171,10 @@ FrameAction();
 
 // Check crash between ship and enemy
 function checkCrash(ship, enemy){
-    var diffX = (enemy.x + enemy.width) - ship.x;
-    var diffY = (enemy.y + enemy.height) - ship.y;
-    
-    //console.log(diffX+", "+diffY);
-    if(diffX < (enemy.width+ship.width) && diffX > 0 && diffY < (enemy.width+ship.width) && diffY > 0){
-        return true;
-    }else{
-        return false;
-    }
+    return ship.x < enemy.x + enemy.width &&
+        ship.x + ship.width > enemy.x &&
+        ship.y < enemy.y + enemy.height &&
+        ship.y + ship.height > enemy.y;
 }
 
 function stopGame(){
@@ -202,27 +222,39 @@ document.onkeyup = function(e){
     }
 };
 
-let gravitySensor = new GravitySensor({frequency: 60});
+if("GravitySensor" in window){
+    try {
+        let gravitySensor = new GravitySensor({frequency: 60});
+        var sensorDeadzone = 0.5;
 
-gravitySensor.addEventListener("reading", e => {
-    // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
-    if(gravitySensor.x > 0){
-        leftKey = true;
-        rightKey = false;
-    }
-    if(gravitySensor.x < 0){
-        leftKey = false;
-        rightKey = true;
-    }
-    // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
-    if(gravitySensor.y > 0){
-        upKey = false;
-        downKey = true;
-    }
-    if(gravitySensor.y < 0){
-        upKey = true;
-        downKey = false;
-    }
-});
+        gravitySensor.addEventListener("reading", () => {
+            // X 양수 왼쪽 아래로, 음수 오른쪽 아래로
+            if(gravitySensor.x > sensorDeadzone){
+                leftKey = true;
+                rightKey = false;
+            }else if(gravitySensor.x < -sensorDeadzone){
+                leftKey = false;
+                rightKey = true;
+            }else{
+                leftKey = false;
+                rightKey = false;
+            }
 
-gravitySensor.start();
+            // Y 양수 아래쪽 아래로, 음수 위쪽 아래로
+            if(gravitySensor.y > sensorDeadzone){
+                upKey = false;
+                downKey = true;
+            }else if(gravitySensor.y < -sensorDeadzone){
+                upKey = true;
+                downKey = false;
+            }else{
+                upKey = false;
+                downKey = false;
+            }
+        });
+
+        gravitySensor.start();
+    } catch (error) {
+        console.warn("GravitySensor is unavailable:", error);
+    }
+}
