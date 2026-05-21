@@ -157,9 +157,43 @@ function getDisplayScore(){
     return score + Math.floor(timer / 100);
 }
 
+function loadHighScore(){
+    try {
+        var storedHighScore = window.localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+        if(storedHighScore !== null){
+            var parsedHighScore = parseInt(storedHighScore, 10);
+            if(!Number.isNaN(parsedHighScore) && parsedHighScore >= 0){
+                return parsedHighScore;
+            }
+        }
+    } catch (error) {
+        console.warn("Unable to load high score:", error);
+    }
+    return 0;
+}
+
+function saveHighScore(value){
+    try {
+        window.localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(value));
+    } catch (error) {
+        console.warn("Unable to save high score:", error);
+    }
+}
+
+function updateHighScoreIfNeeded(displayScore){
+    if(displayScore > highScore){
+        highScore = displayScore;
+        saveHighScore(highScore);
+    }
+}
+
 function updateScoreText(){
-    if(scoreElement){
-        scoreElement.textContent = "점수: " + getDisplayScore();
+    var displayScore = getDisplayScore();
+    if(currentScoreElement){
+        currentScoreElement.textContent = "현재 점수: " + displayScore;
+    }
+    if(highScoreElement){
+        highScoreElement.textContent = "최고 점수: " + highScore;
     }
 }
 
