@@ -1,6 +1,7 @@
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
-var scoreElement = document.getElementById('score');
+var currentScoreElement = document.getElementById('current-score');
+var highScoreElement = document.getElementById('high-score');
 var gameOverLayer = document.getElementById('game-over');
 var finalScoreElement = document.getElementById('final-score');
 var restartButton = document.getElementById('restart-button');
@@ -21,6 +22,7 @@ var bulletIntervalValue = document.getElementById('bullet-interval-value');
 var sensorDeadzoneValue = document.getElementById('sensor-deadzone-value');
 
 var SETTINGS_STORAGE_KEY = "galaga-game-settings-v1";
+var HIGH_SCORE_STORAGE_KEY = "galaga-high-score-v1";
 var defaultGameConfig = {
     playerSpeed: 3,
     enemySpeed: 2,
@@ -158,9 +160,43 @@ function getDisplayScore(){
     return score + Math.floor(timer / 100);
 }
 
+function loadHighScore(){
+    try {
+        var storedHighScore = window.localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+        if(storedHighScore !== null){
+            var parsedHighScore = parseInt(storedHighScore, 10);
+            if(!Number.isNaN(parsedHighScore) && parsedHighScore >= 0){
+                return parsedHighScore;
+            }
+        }
+    } catch (error) {
+        console.warn("Unable to load high score:", error);
+    }
+    return 0;
+}
+
+function saveHighScore(value){
+    try {
+        window.localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(value));
+    } catch (error) {
+        console.warn("Unable to save high score:", error);
+    }
+}
+
+function updateHighScoreIfNeeded(displayScore){
+    if(displayScore > highScore){
+        highScore = displayScore;
+        saveHighScore(highScore);
+    }
+}
+
 function updateScoreText(){
-    if(scoreElement){
-        scoreElement.textContent = "점수: " + getDisplayScore();
+    var displayScore = getDisplayScore();
+    if(currentScoreElement){
+        currentScoreElement.textContent = "현재 점수: " + displayScore;
+    }
+    if(highScoreElement){
+        highScoreElement.textContent = "최고 점수: " + highScore;
     }
 }
 
@@ -439,8 +475,11 @@ function stopGame(){
         window.clearTimeout(gameOverRevealTimeout);
     }
     gameOverRevealTimeout = window.setTimeout(function(){
+        var finalScore = getDisplayScore();
+        updateHighScoreIfNeeded(finalScore);
+        updateScoreText();
         if(finalScoreElement){
-            finalScoreElement.textContent = "최종 점수: " + getDisplayScore();
+            finalScoreElement.textContent = "최종 점수: " + finalScore;
         }
         setGameOverVisible(true);
     }, 160);
