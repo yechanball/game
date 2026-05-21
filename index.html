@@ -10,11 +10,40 @@
 <body>
     <canvas id="canvas"></canvas>
     <p id="score">점수: 0</p>
-    <div id="game-over" class="overlay hidden">
-        <p id="game-over-title">게임 오버</p>
-        <p id="final-score">최종 점수: 0</p>
-        <button id="restart-button" type="button">다시 시작</button>
+
+    <button id="settings-toggle" type="button">설정</button>
+    <aside id="settings-panel" class="settings-panel hidden">
+        <h2>게임 설정</h2>
+
+        <label for="player-speed-input">플레이어 이동 속도: <span id="player-speed-value"></span></label>
+        <input id="player-speed-input" type="range" min="1" max="8" step="1">
+
+        <label for="enemy-speed-input">적 이동 속도: <span id="enemy-speed-value"></span></label>
+        <input id="enemy-speed-input" type="range" min="1" max="6" step="0.5">
+
+        <label for="bullet-speed-input">총알 속도: <span id="bullet-speed-value"></span></label>
+        <input id="bullet-speed-input" type="range" min="2" max="10" step="0.5">
+
+        <label for="enemy-spawn-input">적 등장 간격: <span id="enemy-spawn-value"></span></label>
+        <input id="enemy-spawn-input" type="range" min="40" max="320" step="10">
+
+        <label for="bullet-interval-input">자동 발사 간격: <span id="bullet-interval-value"></span></label>
+        <input id="bullet-interval-input" type="range" min="8" max="50" step="1">
+
+        <label for="sensor-deadzone-input">기울기 민감도: <span id="sensor-deadzone-value"></span></label>
+        <input id="sensor-deadzone-input" type="range" min="0.1" max="1.5" step="0.1">
+
+        <button id="settings-reset" type="button">기본값 복원</button>
+    </aside>
+
+    <div id="game-over" class="overlay-backdrop hidden">
+        <div class="overlay-card">
+            <p id="game-over-title">게임 오버</p>
+            <p id="final-score">최종 점수: 0</p>
+            <button id="restart-button" type="button">다시 시작</button>
+        </div>
     </div>
+
     <script src="main.js"></script>
 </body>
 </html>
