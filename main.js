@@ -1,6 +1,7 @@
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
-var scoreElement = document.getElementById('score');
+var currentScoreElement = document.getElementById('current-score');
+var highScoreElement = document.getElementById('high-score');
 var gameOverLayer = document.getElementById('game-over');
 var finalScoreElement = document.getElementById('final-score');
 var restartButton = document.getElementById('restart-button');
@@ -21,6 +22,7 @@ var bulletIntervalValue = document.getElementById('bullet-interval-value');
 var sensorDeadzoneValue = document.getElementById('sensor-deadzone-value');
 
 var SETTINGS_STORAGE_KEY = "galaga-game-settings-v1";
+var HIGH_SCORE_STORAGE_KEY = "galaga-high-score-v1";
 var defaultGameConfig = {
     playerSpeed: 3,
     enemySpeed: 2,
@@ -89,6 +91,7 @@ class Enemy {
 
 var timer = 0;
 var score = 0;
+var highScore = loadHighScore();
 var enemyArr = [];
 var bulletArr = [];
 var nextEnemySpawnAt = 0;
@@ -472,8 +475,11 @@ function stopGame(){
         window.clearTimeout(gameOverRevealTimeout);
     }
     gameOverRevealTimeout = window.setTimeout(function(){
+        var finalScore = getDisplayScore();
+        updateHighScoreIfNeeded(finalScore);
+        updateScoreText();
         if(finalScoreElement){
-            finalScoreElement.textContent = "최종 점수: " + getDisplayScore();
+            finalScoreElement.textContent = "최종 점수: " + finalScore;
         }
         setGameOverVisible(true);
     }, 160);
