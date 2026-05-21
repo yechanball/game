@@ -8,8 +8,13 @@
     <link rel="stylesheet" href="./main.css" type="text/css">
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <p id="score">점수: 0</p>
+    <div class="game-container">
+        <canvas id="canvas"></canvas>
+        <div id="score-hud" class="score-hud">
+            <p id="current-score">현재 점수: 0</p>
+            <p id="high-score">최고 점수: 0</p>
+        </div>
+    </div>
 
     <button id="settings-toggle" type="button">설정</button>
     <aside id="settings-panel" class="settings-panel hidden">
