@@ -40,8 +40,277 @@ canvas.height = window.innerHeight - 100;
 var shipStartX = 135;
 var shipStartY = canvas.height - 50;
 
-//var imgShip = new Image();
-//imgShip.src = './img/ship.png';
+var stars = [];
+var particles = [];
+var gridScroll = 0;
+var screenShake = 0;
+var engineGlowPhase = 0;
+
+function initVisualEffects(){
+    stars = [];
+    particles = [];
+    gridScroll = 0;
+    screenShake = 0;
+    engineGlowPhase = 0;
+    var starCount = Math.max(40, Math.floor((canvas.width * canvas.height) / 2200));
+    for(var i = 0; i < starCount; i++){
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            depth: Math.random() * 0.85 + 0.15
+        });
+    }
+}
+
+function depthScale(y){
+    return 0.72 + (y / canvas.height) * 0.45;
+}
+
+function drawArcadeBackground(){
+    var w = canvas.width;
+    var h = canvas.height;
+    var horizonY = h * 0.32;
+    var bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+    bgGrad.addColorStop(0, "#050814");
+    bgGrad.addColorStop(0.45, "#0a1230");
+    bgGrad.addColorStop(1, "#17062f");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    var nebula = ctx.createRadialGradient(w * 0.5, horizonY, 20, w * 0.5, horizonY * 0.6, w * 0.9);
+    nebula.addColorStop(0, "rgba(120, 60, 255, 0.28)");
+    nebula.addColorStop(1, "rgba(5, 8, 20, 0)");
+    ctx.fillStyle = nebula;
+    ctx.fillRect(0, 0, w, h);
+
+    for(var s = 0; s < stars.length; s++){
+        var star = stars[s];
+        star.y += 0.35 + star.depth * 2.4;
+        if(star.y > h){
+            star.y = 0;
+            star.x = Math.random() * w;
+        }
+        var size = star.depth * 2.2;
+        var alpha = 0.25 + star.depth * 0.65;
+        ctx.fillStyle = "rgba(210, 240, 255, " + alpha + ")";
+        ctx.fillRect(star.x, star.y, size, size);
+    }
+
+    gridScroll = (gridScroll + 1.8) % 40;
+    drawPerspectiveGrid(horizonY);
+}
+
+function drawPerspectiveGrid(horizonY){
+    var w = canvas.width;
+    var h = canvas.height;
+    var vx = w * 0.5;
+    var vy = horizonY;
+    ctx.save();
+    var rows = 12;
+    for(var row = 0; row <= rows; row++){
+        var t = row / rows;
+        var eased = t * t;
+        var y = vy + (h - vy) * eased;
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(0, 255, 214, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+    }
+    var lanes = 7;
+    for(var lane = 0; lane <= lanes; lane++){
+        var lx = (lane / lanes) * w;
+        ctx.beginPath();
+        ctx.strokeStyle = lane % 2 === 0 ? "rgba(255, 45, 217, 0.22)" : "rgba(0, 255, 214, 0.18)";
+        ctx.lineWidth = 1;
+        ctx.moveTo(lx, h);
+        ctx.lineTo(vx + (lx - vx) * 0.08, vy);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function spawnParticles(x, y, amount, palette){
+    for(var i = 0; i < amount; i++){
+        var angle = Math.random() * Math.PI * 2;
+        var speed = 1 + Math.random() * 4.5;
+        particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 20 + Math.floor(Math.random() * 22),
+            size: 1 + Math.random() * 3.5,
+            color: palette[Math.floor(Math.random() * palette.length)]
+        });
+    }
+}
+
+function updateAndDrawParticles(){
+    for(var p = particles.length - 1; p >= 0; p--){
+        var particle = particles[p];
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.04;
+        particle.life--;
+        if(particle.life <= 0){
+            particles.splice(p, 1);
+            continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, particle.life / 18);
+        ctx.fillStyle = particle.color;
+        ctx.shadowColor = particle.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function getShipTilt(){
+    if(leftKey && !rightKey){
+        return -1;
+    }
+    if(rightKey && !leftKey){
+        return 1;
+    }
+    return 0;
+}
+
+function drawEngineTrail(ship){
+    var cx = ship.x + ship.width / 2;
+    var tailY = ship.y + ship.height - 2;
+    engineGlowPhase += 0.35;
+    var flicker = 0.6 + Math.sin(engineGlowPhase) * 0.25;
+    var trail = ctx.createRadialGradient(cx, tailY + 8, 0, cx, tailY + 8, 18 * flicker);
+    trail.addColorStop(0, "rgba(255, 130, 0, 0.85)");
+    trail.addColorStop(0.5, "rgba(255, 50, 120, 0.35)");
+    trail.addColorStop(1, "rgba(255, 50, 120, 0)");
+    ctx.fillStyle = trail;
+    ctx.fillRect(cx - 20, tailY - 4, 40, 28);
+}
+
+function drawPlayerShip(ship){
+    var cx = ship.x + ship.width / 2;
+    var cy = ship.y + ship.height / 2;
+    var tilt = getShipTilt();
+    drawEngineTrail(ship);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(tilt * 0.22);
+    ctx.shadowColor = "#00f6ff";
+    ctx.shadowBlur = 14;
+    var body = ctx.createLinearGradient(0, -ship.height / 2, 0, ship.height / 2);
+    body.addColorStop(0, "#eaffff");
+    body.addColorStop(0.35, "#44e8ff");
+    body.addColorStop(1, "#0a4fb8");
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(0, -ship.height / 2);
+    ctx.lineTo(-ship.width / 2, ship.height / 2);
+    ctx.lineTo(-6, ship.height / 2 - 6);
+    ctx.lineTo(0, ship.height / 2 - 2);
+    ctx.lineTo(6, ship.height / 2 - 6);
+    ctx.lineTo(ship.width / 2, ship.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.ellipse(0, -2, 4, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-ship.width / 2 + 2, ship.height / 2 - 1);
+    ctx.lineTo(-ship.width / 2 - 5, ship.height / 2 + 6);
+    ctx.moveTo(ship.width / 2 - 2, ship.height / 2 - 1);
+    ctx.lineTo(ship.width / 2 + 5, ship.height / 2 + 6);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawEnemyShip(enemy){
+    var scale = depthScale(enemy.y);
+    var w = enemy.width;
+    var h = enemy.height;
+    var cx = enemy.x + enemy.width / 2;
+    var cy = enemy.y + enemy.height / 2;
+    enemy.wobblePhase = (enemy.wobblePhase || 0) + 0.14;
+    var wobble = Math.sin(enemy.wobblePhase) * 2.5;
+    ctx.save();
+    ctx.translate(cx + wobble, cy);
+    ctx.scale(scale, scale);
+    ctx.shadowColor = enemy.glowColor;
+    ctx.shadowBlur = 12;
+    var shell = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    shell.addColorStop(0, enemy.topColor);
+    shell.addColorStop(1, enemy.bottomColor);
+    ctx.fillStyle = shell;
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2);
+    ctx.lineTo(-w / 2, h / 4);
+    ctx.lineTo(-w / 3, h / 2);
+    ctx.lineTo(w / 3, h / 2);
+    ctx.lineTo(w / 2, h / 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255, 200, 255, 0.7)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 6, h / 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawPlasmaBullet(bullet){
+    var cx = bullet.x + bullet.width / 2;
+    var top = bullet.y - 6;
+    var grad = ctx.createLinearGradient(cx, top, cx, bullet.y + bullet.height + 4);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.3, "#79f0ff");
+    grad.addColorStop(1, "rgba(0, 210, 255, 0)");
+    ctx.save();
+    ctx.shadowColor = "#00e8ff";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - 3, top, 6, bullet.height + 10);
+    ctx.restore();
+}
+
+function spawnHitExplosion(enemy){
+    var cx = enemy.x + enemy.width / 2;
+    var cy = enemy.y + enemy.height / 2;
+    spawnParticles(cx, cy, 14, ["#ff66cc", "#ffd166", "#ffffff"]);
+}
+
+function spawnCrashExplosion(ship){
+    var cx = ship.x + ship.width / 2;
+    var cy = ship.y + ship.height / 2;
+    screenShake = 12;
+    spawnParticles(cx, cy, 38, ["#ff3b3b", "#ff9f1c", "#ffe066", "#ffffff"]);
+}
+
+function getScreenShakeOffset(){
+    if(screenShake <= 0.4){
+        return {x: 0, y: 0};
+    }
+    return {
+        x: (Math.random() - 0.5) * screenShake * 2,
+        y: (Math.random() - 0.5) * screenShake * 2
+    };
+}
+
+function decayScreenShake(){
+    if(screenShake > 0){
+        screenShake *= 0.82;
+        if(screenShake < 0.4){
+            screenShake = 0;
+        }
+    }
+}
 
 var Ship = {
     x : shipStartX,
@@ -49,31 +318,21 @@ var Ship = {
     width : 30,
     height : 30,
     draw(){
-        ctx.fillStyle = 'green';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        //ctx.drawImage(imgShip, this.x, this.y);
+        drawPlayerShip(this);
     }
 };
 
-//var imgBullet = new Image();
-//imgBullet.src = './img/bullet.png';
-
 class Bullet {
     constructor(){
-        this.x = Ship.x + ((Ship.width - 10) / 2);
+        this.x = Ship.x + ((Ship.width - 6) / 2);
         this.y = Ship.y;
-        this.width = 10;
-        this.height = 10;
+        this.width = 6;
+        this.height = 14;
     }
     draw(){
-        ctx.fillStyle = 'blue';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        //ctx.drawImage(imgBullet, this.x, this.y);
+        drawPlasmaBullet(this);
     }
 }
-
-//var imgEnemy = new Image();
-//imgEnemy.src = './img/enemy.png';
 
 class Enemy {
     constructor(){
@@ -81,11 +340,19 @@ class Enemy {
         this.y = 0;
         this.width = 30;
         this.height = 30;
+        this.wobblePhase = Math.random() * Math.PI * 2;
+        var palettes = [
+            {top: "#ff7edb", bottom: "#b60068", glow: "#ff4fd8"},
+            {top: "#ffc857", bottom: "#c45c00", glow: "#ffb347"},
+            {top: "#9dff6a", bottom: "#239b2d", glow: "#7df95b"}
+        ];
+        var pick = palettes[Math.floor(Math.random() * palettes.length)];
+        this.topColor = pick.top;
+        this.bottomColor = pick.bottom;
+        this.glowColor = pick.glow;
     }
     draw(){
-        ctx.fillStyle = 'red';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        //ctx.drawImage(imgEnemy, this.x, this.y);
+        drawEnemyShip(this);
     }
 }
 
@@ -219,8 +486,23 @@ function setGameOverVisible(isVisible){
 }
 
 function drawCrashEffect(){
+    spawnCrashExplosion(Ship);
+    drawArcadeBackground();
+    updateAndDrawParticles();
     ctx.save();
-    ctx.fillStyle = "rgba(255, 70, 70, 0.45)";
+    ctx.fillStyle = "rgba(255, 70, 70, 0.35)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    var flash = ctx.createRadialGradient(
+        Ship.x + Ship.width / 2,
+        Ship.y + Ship.height / 2,
+        0,
+        Ship.x + Ship.width / 2,
+        Ship.y + Ship.height / 2,
+        90
+    );
+    flash.addColorStop(0, "rgba(255, 255, 255, 0.75)");
+    flash.addColorStop(1, "rgba(255, 80, 80, 0)");
+    ctx.fillStyle = flash;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
 }
@@ -364,6 +646,7 @@ function resetGameState(){
     Ship.y = shipStartY;
     gameStopped = false;
     resetInputState();
+    initVisualEffects();
     updateScoreText();
     setGameOverVisible(false);
 }
@@ -377,7 +660,10 @@ function FrameAction(){
     timer++;
     updateScoreText();
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawArcadeBackground();
+    var shake = getScreenShakeOffset();
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
 
     if(timer >= nextEnemySpawnAt){
         var enemy = new Enemy();
@@ -397,6 +683,9 @@ function FrameAction(){
 
         if(checkCrash(Ship, currentEnemy)){
             triggerVibration([500, 200, 500, 200, 500]);
+            ctx.restore();
+            updateAndDrawParticles();
+            decayScreenShake();
             stopGame();
             return;
         }
@@ -423,6 +712,7 @@ function FrameAction(){
         for(var enemyIndex = enemyArr.length - 1; enemyIndex >= 0; enemyIndex--){
             if(checkCrash(currentBullet, enemyArr[enemyIndex])){
                 triggerVibration([100]);
+                spawnHitExplosion(enemyArr[enemyIndex]);
                 enemyArr.splice(enemyIndex, 1);
                 bulletArr.splice(bulletIndex, 1);
                 score++;
@@ -450,6 +740,9 @@ function FrameAction(){
     }
 
     Ship.draw();
+    ctx.restore();
+    updateAndDrawParticles();
+    decayScreenShake();
 }
 
 // Check crash between two rectangles
@@ -492,8 +785,8 @@ function startGame(){
         window.clearTimeout(gameOverRevealTimeout);
         gameOverRevealTimeout = null;
     }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     resetGameState();
+    drawArcadeBackground();
     Ship.draw();
     FrameAction();
 }
