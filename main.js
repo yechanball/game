@@ -2,12 +2,23 @@ var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 var currentScoreElement = document.getElementById('current-score');
 var highScoreElement = document.getElementById('high-score');
+var scoreHud = document.getElementById('score-hud');
+var titleScreen = document.getElementById('title-screen');
+var scoresScreen = document.getElementById('scores-screen');
+var scoresHighScoreElement = document.getElementById('scores-high-score');
+var scoresDifficultyElement = document.getElementById('scores-difficulty');
+var menuStartButton = document.getElementById('menu-start');
+var menuSettingsButton = document.getElementById('menu-settings');
+var menuScoresButton = document.getElementById('menu-scores');
+var scoresBackButton = document.getElementById('scores-back');
 var gameOverLayer = document.getElementById('game-over');
 var finalScoreElement = document.getElementById('final-score');
 var restartButton = document.getElementById('restart-button');
-var settingsToggleButton = document.getElementById('settings-toggle');
+var gameOverMenuButton = document.getElementById('gameover-menu-button');
 var settingsPanel = document.getElementById('settings-panel');
+var settingsBackButton = document.getElementById('settings-back');
 var settingsResetButton = document.getElementById('settings-reset');
+var difficultySelect = document.getElementById('difficulty-select');
 var playerSpeedInput = document.getElementById('player-speed-input');
 var enemySpeedInput = document.getElementById('enemy-speed-input');
 var bulletSpeedInput = document.getElementById('bullet-speed-input');
@@ -21,16 +32,57 @@ var enemySpawnValue = document.getElementById('enemy-spawn-value');
 var bulletIntervalValue = document.getElementById('bullet-interval-value');
 var sensorDeadzoneValue = document.getElementById('sensor-deadzone-value');
 
-var SETTINGS_STORAGE_KEY = "galaga-game-settings-v1";
+var SETTINGS_STORAGE_KEY = "galaga-game-settings-v2";
 var HIGH_SCORE_STORAGE_KEY = "galaga-high-score-v1";
-var defaultGameConfig = {
-    playerSpeed: 3,
-    enemySpeed: 2,
-    bulletSpeed: 4,
-    enemySpawnWindow: 200,
-    bulletInterval: 25,
-    sensorDeadzone: 0.5
+var DEFAULT_DIFFICULTY = "easy";
+var DIFFICULTY_LABELS = {
+    easy: "Easy",
+    normal: "Normal",
+    hard: "Hard",
+    veryHard: "Very Hard",
+    hell: "Hell"
 };
+var DIFFICULTY_PRESETS = {
+    easy: {
+        playerSpeed: 3,
+        enemySpeed: 1.6,
+        bulletSpeed: 4,
+        enemySpawnWindow: 260,
+        bulletInterval: 30
+    },
+    normal: {
+        playerSpeed: 3,
+        enemySpeed: 2.2,
+        bulletSpeed: 4.2,
+        enemySpawnWindow: 200,
+        bulletInterval: 25
+    },
+    hard: {
+        playerSpeed: 3,
+        enemySpeed: 2.9,
+        bulletSpeed: 4.8,
+        enemySpawnWindow: 150,
+        bulletInterval: 20
+    },
+    veryHard: {
+        playerSpeed: 2.5,
+        enemySpeed: 3.6,
+        bulletSpeed: 5.2,
+        enemySpawnWindow: 110,
+        bulletInterval: 16
+    },
+    hell: {
+        playerSpeed: 2,
+        enemySpeed: 4.5,
+        bulletSpeed: 5.8,
+        enemySpawnWindow: 70,
+        bulletInterval: 12
+    }
+};
+var defaultGameConfig = Object.assign({
+    difficulty: DEFAULT_DIFFICULTY,
+    sensorDeadzone: 0.5
+}, DIFFICULTY_PRESETS[DEFAULT_DIFFICULTY]);
 
 var gameConfig = loadGameConfig();
 
@@ -367,6 +419,11 @@ var nextBulletAt = 0;
 var animation = null;
 var gameStopped = false;
 var gameOverRevealTimeout = null;
+var gamePhase = "menu";
+var menuAnimation = null;
+var takeoffAnimation = null;
+var takeoffProgress = 0;
+var menuShipBob = 0;
 
 // Input key from keyboard or sensor
 var leftKey = false;
@@ -381,16 +438,45 @@ function clampNumber(value, min, max, fallback){
     return Math.min(max, Math.max(min, value));
 }
 
+function isValidDifficulty(difficultyId){
+    return Boolean(difficultyId && DIFFICULTY_PRESETS[difficultyId]);
+}
+
 function normalizeGameConfig(rawConfig){
     var candidate = rawConfig || {};
+    var difficultyId = isValidDifficulty(candidate.difficulty) ? candidate.difficulty : DEFAULT_DIFFICULTY;
+    var preset = DIFFICULTY_PRESETS[difficultyId];
     return {
-        playerSpeed: Math.round(clampNumber(candidate.playerSpeed, 1, 8, defaultGameConfig.playerSpeed)),
-        enemySpeed: clampNumber(candidate.enemySpeed, 1, 6, defaultGameConfig.enemySpeed),
-        bulletSpeed: clampNumber(candidate.bulletSpeed, 2, 10, defaultGameConfig.bulletSpeed),
-        enemySpawnWindow: Math.round(clampNumber(candidate.enemySpawnWindow, 40, 320, defaultGameConfig.enemySpawnWindow)),
-        bulletInterval: Math.round(clampNumber(candidate.bulletInterval, 8, 50, defaultGameConfig.bulletInterval)),
+        difficulty: difficultyId,
+        playerSpeed: Math.round(clampNumber(candidate.playerSpeed, 1, 8, preset.playerSpeed)),
+        enemySpeed: clampNumber(candidate.enemySpeed, 1, 6, preset.enemySpeed),
+        bulletSpeed: clampNumber(candidate.bulletSpeed, 2, 10, preset.bulletSpeed),
+        enemySpawnWindow: Math.round(clampNumber(candidate.enemySpawnWindow, 40, 320, preset.enemySpawnWindow)),
+        bulletInterval: Math.round(clampNumber(candidate.bulletInterval, 8, 50, preset.bulletInterval)),
         sensorDeadzone: clampNumber(candidate.sensorDeadzone, 0.1, 1.5, defaultGameConfig.sensorDeadzone)
     };
+}
+
+function applyDifficultyPreset(difficultyId, shouldSave){
+    if(!isValidDifficulty(difficultyId)){
+        difficultyId = DEFAULT_DIFFICULTY;
+    }
+    var preset = DIFFICULTY_PRESETS[difficultyId];
+    gameConfig = normalizeGameConfig(Object.assign({}, gameConfig, preset, {
+        difficulty: difficultyId
+    }));
+    syncSettingInputs();
+    if(shouldSave !== false){
+        saveGameConfig();
+    }
+    if(gamePhase === "playing" && !gameStopped){
+        nextEnemySpawnAt = timer + randomEnemyDelay();
+        nextBulletAt = timer + gameConfig.bulletInterval;
+    }
+}
+
+function getDifficultyLabel(difficultyId){
+    return DIFFICULTY_LABELS[difficultyId] || DIFFICULTY_LABELS[DEFAULT_DIFFICULTY];
 }
 
 function loadGameConfig(){
@@ -529,6 +615,9 @@ function updateSettingValueLabels(){
 }
 
 function syncSettingInputs(){
+    if(difficultySelect){
+        difficultySelect.value = gameConfig.difficulty;
+    }
     if(playerSpeedInput){
         playerSpeedInput.value = String(gameConfig.playerSpeed);
     }
@@ -562,18 +651,169 @@ function applyLiveTimingChange(settingKey){
     }
 }
 
+function setElementVisible(element, isVisible){
+    if(!element){
+        return;
+    }
+    if(isVisible){
+        element.classList.remove("hidden");
+    }else{
+        element.classList.add("hidden");
+    }
+}
+
+function setScoreHudVisible(isVisible){
+    setElementVisible(scoreHud, isVisible);
+}
+
+function setTitleScreenVisible(isVisible){
+    setElementVisible(titleScreen, isVisible);
+}
+
+function setScoresScreenVisible(isVisible){
+    setElementVisible(scoresScreen, isVisible);
+}
+
 function setSettingsPanelVisible(isVisible){
-    if(!settingsPanel || !settingsToggleButton){
+    if(!settingsPanel){
         return;
     }
     if(isVisible){
         settingsPanel.classList.remove("hidden");
-        settingsToggleButton.textContent = "설정 닫기";
         resetInputState();
     }else{
         settingsPanel.classList.add("hidden");
-        settingsToggleButton.textContent = "설정";
     }
+}
+
+function updateScoresScreenText(){
+    if(scoresHighScoreElement){
+        scoresHighScoreElement.textContent = "최고 점수: " + highScore;
+    }
+    if(scoresDifficultyElement){
+        scoresDifficultyElement.textContent = "현재 난이도: " + getDifficultyLabel(gameConfig.difficulty);
+    }
+}
+
+function openScoresScreen(){
+    updateScoresScreenText();
+    setTitleScreenVisible(false);
+    setScoresScreenVisible(true);
+    setSettingsPanelVisible(false);
+}
+
+function openSettingsScreen(){
+    setTitleScreenVisible(false);
+    setScoresScreenVisible(false);
+    setSettingsPanelVisible(true);
+}
+
+function returnToTitleScreen(){
+    cancelAnimationFrame(menuAnimation);
+    cancelAnimationFrame(takeoffAnimation);
+    cancelAnimationFrame(animation);
+    menuAnimation = null;
+    takeoffAnimation = null;
+    animation = null;
+    gamePhase = "menu";
+    gameStopped = true;
+    resetInputState();
+    setGameOverVisible(false);
+    setScoresScreenVisible(false);
+    setSettingsPanelVisible(false);
+    setScoreHudVisible(false);
+    setTitleScreenVisible(true);
+    initVisualEffects();
+    startMenuLoop();
+}
+
+function easeOutCubic(value){
+    var t = Math.min(1, Math.max(0, value));
+    return 1 - Math.pow(1 - t, 3);
+}
+
+function drawMenuPreviewShip(){
+    menuShipBob += 0.06;
+    var previewX = canvas.width / 2 - Ship.width / 2;
+    var previewY = canvas.height - 78 + Math.sin(menuShipBob) * 4;
+    var previousX = Ship.x;
+    var previousY = Ship.y;
+    Ship.x = previewX;
+    Ship.y = previewY;
+    drawPlayerShip(Ship);
+    Ship.x = previousX;
+    Ship.y = previousY;
+}
+
+function menuFrame(){
+    if(gamePhase !== "menu"){
+        return;
+    }
+    menuAnimation = requestAnimationFrame(menuFrame);
+    drawArcadeBackground();
+    drawMenuPreviewShip();
+}
+
+function startMenuLoop(){
+    cancelAnimationFrame(menuAnimation);
+    menuAnimation = null;
+    if(gamePhase !== "menu"){
+        return;
+    }
+    initVisualEffects();
+    menuFrame();
+}
+
+function startTakeoffSequence(){
+    if(gamePhase === "takeoff" || gamePhase === "playing"){
+        return;
+    }
+    cancelAnimationFrame(menuAnimation);
+    menuAnimation = null;
+    setTitleScreenVisible(false);
+    setScoresScreenVisible(false);
+    setSettingsPanelVisible(false);
+    setGameOverVisible(false);
+    setScoreHudVisible(false);
+    gamePhase = "takeoff";
+    gameStopped = true;
+    takeoffProgress = 0;
+    timer = 0;
+    score = 0;
+    enemyArr = [];
+    bulletArr = [];
+    resetInputState();
+    initVisualEffects();
+    Ship.x = shipStartX;
+    Ship.y = canvas.height + 50;
+    cancelAnimationFrame(takeoffAnimation);
+    takeoffFrame();
+}
+
+function takeoffFrame(){
+    if(gamePhase !== "takeoff"){
+        return;
+    }
+    takeoffAnimation = requestAnimationFrame(takeoffFrame);
+    gridScroll = (gridScroll + 3.4) % 40;
+    drawArcadeBackground();
+    takeoffProgress = Math.min(1, takeoffProgress + 0.018);
+    var startY = canvas.height + 50;
+    Ship.y = startY - (startY - shipStartY) * easeOutCubic(takeoffProgress);
+    drawPlayerShip(Ship);
+    if(takeoffProgress >= 1){
+        Ship.y = shipStartY;
+        cancelAnimationFrame(takeoffAnimation);
+        takeoffAnimation = null;
+        beginGameplay();
+    }
+}
+
+function beginGameplay(){
+    resetGameState();
+    gamePhase = "playing";
+    setScoreHudVisible(true);
+    FrameAction();
 }
 
 function isSettingsInputFocused(){
@@ -603,11 +843,15 @@ function bindSettingInput(inputElement, settingKey){
 }
 
 function resetGameConfigToDefault(){
-    gameConfig = normalizeGameConfig(defaultGameConfig);
+    applyDifficultyPreset(DEFAULT_DIFFICULTY, false);
+    gameConfig.sensorDeadzone = defaultGameConfig.sensorDeadzone;
+    gameConfig = normalizeGameConfig(gameConfig);
     syncSettingInputs();
     saveGameConfig();
-    nextEnemySpawnAt = timer + randomEnemyDelay();
-    nextBulletAt = timer + gameConfig.bulletInterval;
+    if(gamePhase === "playing" && !gameStopped){
+        nextEnemySpawnAt = timer + randomEnemyDelay();
+        nextBulletAt = timer + gameConfig.bulletInterval;
+    }
 }
 
 function initializeSettingsUI(){
@@ -620,13 +864,31 @@ function initializeSettingsUI(){
     bindSettingInput(bulletIntervalInput, "bulletInterval");
     bindSettingInput(sensorDeadzoneInput, "sensorDeadzone");
 
-    if(settingsToggleButton){
-        settingsToggleButton.addEventListener("click", function(){
-            if(!settingsPanel){
-                return;
-            }
-            var isCurrentlyHidden = settingsPanel.classList.contains("hidden");
-            setSettingsPanelVisible(isCurrentlyHidden);
+    if(difficultySelect){
+        difficultySelect.addEventListener("change", function(){
+            applyDifficultyPreset(difficultySelect.value, true);
+        });
+    }
+
+    if(menuStartButton){
+        menuStartButton.addEventListener("click", startTakeoffSequence);
+    }
+    if(menuSettingsButton){
+        menuSettingsButton.addEventListener("click", openSettingsScreen);
+    }
+    if(menuScoresButton){
+        menuScoresButton.addEventListener("click", openScoresScreen);
+    }
+    if(scoresBackButton){
+        scoresBackButton.addEventListener("click", function(){
+            setScoresScreenVisible(false);
+            setTitleScreenVisible(true);
+        });
+    }
+    if(settingsBackButton){
+        settingsBackButton.addEventListener("click", function(){
+            setSettingsPanelVisible(false);
+            setTitleScreenVisible(true);
         });
     }
 
@@ -652,7 +914,7 @@ function resetGameState(){
 }
 
 function FrameAction(){
-    if(gameStopped){
+    if(gamePhase !== "playing" || gameStopped){
         return;
     }
 
@@ -758,6 +1020,7 @@ function stopGame(){
         return;
     }
 
+    gamePhase = "gameover";
     gameStopped = true;
     cancelAnimationFrame(animation);
     animation = null;
@@ -778,17 +1041,13 @@ function stopGame(){
     }, 160);
 }
 
-function startGame(){
-    cancelAnimationFrame(animation);
-    animation = null;
+function restartFromGameOver(){
     if(gameOverRevealTimeout){
         window.clearTimeout(gameOverRevealTimeout);
         gameOverRevealTimeout = null;
     }
-    resetGameState();
-    drawArcadeBackground();
-    Ship.draw();
-    FrameAction();
+    setGameOverVisible(false);
+    startTakeoffSequence();
 }
 
 function setKeyStateByKey(key, isPressed){
@@ -812,7 +1071,19 @@ function setKeyStateByKey(key, isPressed){
 
 document.addEventListener("keydown", function(e){
     if(e.key === "Escape"){
-        setSettingsPanelVisible(false);
+        if(settingsPanel && !settingsPanel.classList.contains("hidden")){
+            setSettingsPanelVisible(false);
+            setTitleScreenVisible(true);
+            return;
+        }
+        if(scoresScreen && !scoresScreen.classList.contains("hidden")){
+            setScoresScreenVisible(false);
+            setTitleScreenVisible(true);
+            return;
+        }
+        return;
+    }
+    if(gamePhase !== "playing"){
         return;
     }
     if(isSettingsInputFocused()){
@@ -824,6 +1095,9 @@ document.addEventListener("keydown", function(e){
 });
 
 document.addEventListener("keyup", function(e){
+    if(gamePhase !== "playing"){
+        return;
+    }
     if(isSettingsInputFocused()){
         return;
     }
@@ -833,7 +1107,10 @@ document.addEventListener("keyup", function(e){
 });
 
 if(restartButton){
-    restartButton.addEventListener("click", startGame);
+    restartButton.addEventListener("click", restartFromGameOver);
+}
+if(gameOverMenuButton){
+    gameOverMenuButton.addEventListener("click", returnToTitleScreen);
 }
 
 function initializeGravitySensor(){
@@ -844,7 +1121,7 @@ function initializeGravitySensor(){
         let gravitySensor = new GravitySensor({frequency: 60});
 
         gravitySensor.addEventListener("reading", () => {
-            if(gameStopped || isSettingsInputFocused()){
+            if(gamePhase !== "playing" || gameStopped || isSettingsInputFocused()){
                 return;
             }
 
@@ -880,4 +1157,5 @@ function initializeGravitySensor(){
 
 initializeSettingsUI();
 initializeGravitySensor();
-startGame();
+updateScoreText();
+returnToTitleScreen();
