@@ -1,3 +1,4 @@
+var gameRoot = document.getElementById('game-root');
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 var currentScoreElement = document.getElementById('current-score');
@@ -398,6 +399,25 @@ var animation = null;
 var gameStopped = false;
 var gameOverRevealTimeout = null;
 var gamePhase = "menu";
+window.gamePhase = gamePhase;
+
+function syncGamePhase(){
+    window.gamePhase = gamePhase;
+    if(!gameRoot){
+        return;
+    }
+    gameRoot.classList.remove("is-menu", "is-takeoff", "is-playing", "is-gameover");
+    if(gamePhase === "menu"){
+        gameRoot.classList.add("is-menu");
+    }else if(gamePhase === "takeoff"){
+        gameRoot.classList.add("is-takeoff");
+    }else if(gamePhase === "playing"){
+        gameRoot.classList.add("is-playing");
+    }else if(gamePhase === "gameover"){
+        gameRoot.classList.add("is-gameover");
+    }
+}
+
 var menuAnimation = null;
 var takeoffAnimation = null;
 var takeoffProgress = 0;
@@ -701,6 +721,7 @@ function returnToTitleScreen(){
     takeoffAnimation = null;
     animation = null;
     gamePhase = "menu";
+    syncGamePhase();
     gameStopped = true;
     resetInputState();
     setGameOverVisible(false);
@@ -708,6 +729,12 @@ function returnToTitleScreen(){
     setSettingsPanelVisible(false);
     setScoreHudVisible(false);
     setTitleScreenVisible(true);
+    if(window.Gameplay){
+        Gameplay.resetCombatState();
+        Gameplay.resizeCanvas();
+        shipStartX = canvas.width / 2 - Ship.width / 2;
+        shipStartY = canvas.height - 56;
+    }
     initVisualEffects();
     startMenuLoop();
 }
@@ -761,6 +788,7 @@ function startTakeoffSequence(){
     setGameOverVisible(false);
     setScoreHudVisible(false);
     gamePhase = "takeoff";
+    syncGamePhase();
     gameStopped = true;
     takeoffProgress = 0;
     timer = 0;
@@ -803,6 +831,7 @@ function takeoffFrame(){
 function beginGameplay(){
     resetGameState();
     gamePhase = "playing";
+    syncGamePhase();
     setScoreHudVisible(true);
     FrameAction();
 }
@@ -883,12 +912,18 @@ function initializeSettingsUI(){
         scoresBackButton.addEventListener("click", function(){
             setScoresScreenVisible(false);
             setTitleScreenVisible(true);
+            if(gamePhase === "menu"){
+                startMenuLoop();
+            }
         });
     }
     if(settingsBackButton){
         settingsBackButton.addEventListener("click", function(){
             setSettingsPanelVisible(false);
             setTitleScreenVisible(true);
+            if(gamePhase === "menu"){
+                startMenuLoop();
+            }
         });
     }
 
@@ -993,6 +1028,7 @@ function stopGame(){
     }
 
     gamePhase = "gameover";
+    syncGamePhase();
     gameStopped = true;
     cancelAnimationFrame(animation);
     animation = null;
@@ -1136,16 +1172,24 @@ window.Ship = Ship;
 window.shipStartX = shipStartX;
 window.shipStartY = shipStartY;
 
-if(window.Gameplay){
-    Gameplay.resizeCanvas();
-    shipStartX = canvas.width / 2 - Ship.width / 2;
-    shipStartY = canvas.height - 56;
-    Ship.x = shipStartX;
-    Ship.y = shipStartY;
-    Gameplay.initTouchControls();
+function bootstrapGame(){
+    if(window.Gameplay){
+        Gameplay.resizeCanvas();
+        shipStartX = canvas.width / 2 - Ship.width / 2;
+        shipStartY = canvas.height - 56;
+        Ship.x = shipStartX;
+        Ship.y = shipStartY;
+        Gameplay.initTouchControls();
+    }
+    syncGamePhase();
+    initializeSettingsUI();
+    initializeGravitySensor();
+    updateScoreText();
+    returnToTitleScreen();
 }
 
-initializeSettingsUI();
-initializeGravitySensor();
-updateScoreText();
-returnToTitleScreen();
+if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", bootstrapGame);
+}else{
+    bootstrapGame();
+}

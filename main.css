@@ -5,7 +5,7 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    touch-action: none;
+    touch-action: manipulation;
 }
 
 body {
@@ -26,6 +26,7 @@ body {
 
 .game-container {
     position: relative;
+    overflow: hidden;
     border-radius: 10px;
     box-shadow:
         0 0 0 2px rgba(0, 255, 214, 0.35),
@@ -34,6 +35,8 @@ body {
 }
 
 canvas {
+    position: relative;
+    z-index: 1;
     border: 2px solid rgba(0, 255, 214, 0.55);
     background-color: #050814;
     display: block;
@@ -41,6 +44,12 @@ canvas {
     width: 100%;
     height: 100%;
     touch-action: none;
+}
+
+.game-container.is-menu canvas,
+.game-container.is-takeoff canvas,
+.game-container.is-gameover canvas {
+    pointer-events: none;
 }
 
 @media (max-width: 900px), (pointer: coarse) {
@@ -64,11 +73,6 @@ canvas {
         height: 100%;
         border: none;
         border-radius: 0;
-    }
-
-    .screen-overlay,
-    .settings-panel {
-        position: fixed;
     }
 
     .score-hud {
@@ -112,7 +116,8 @@ canvas {
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 6;
+    z-index: 20;
+    pointer-events: auto;
     background: rgba(2, 6, 18, 0.55);
     backdrop-filter: blur(2px);
 }
@@ -167,6 +172,8 @@ canvas {
     border-radius: 6px;
     padding: 10px 14px;
     cursor: pointer;
+    touch-action: manipulation;
+    pointer-events: auto;
     font-family: inherit;
     font-weight: 700;
     font-size: 12px;
@@ -223,15 +230,16 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(300px, calc(100vw - 24px));
-    max-height: calc(100vh - 24px);
+    width: min(300px, calc(100% - 24px));
+    max-height: calc(100% - 24px);
     overflow-y: auto;
     background: linear-gradient(160deg, rgba(12, 20, 48, 0.98), rgba(24, 10, 44, 0.96));
     border: 1px solid rgba(0, 255, 214, 0.35);
     border-radius: 10px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(120, 60, 255, 0.2);
     padding: 14px;
-    z-index: 7;
+    z-index: 30;
+    pointer-events: auto;
     color: #dffcff;
 }
 

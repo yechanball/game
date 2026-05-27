@@ -8,85 +8,85 @@
     <link rel="stylesheet" href="./main.css" type="text/css">
 </head>
 <body>
-    <div class="game-container">
+    <div class="game-container" id="game-root">
         <canvas id="canvas"></canvas>
         <div id="score-hud" class="score-hud hidden">
             <p id="current-score">현재 점수: 0</p>
             <p id="high-score">최고 점수: 0</p>
         </div>
-    </div>
 
-    <div id="title-screen" class="screen-overlay">
-        <div class="screen-card title-card">
-            <p class="title-kicker">ARCADE 3D</p>
-            <h1 class="title-logo">GALAGA</h1>
-            <p class="title-tagline">우주 격납고 출격 대기 중</p>
-            <nav class="title-menu" aria-label="메인 메뉴">
-                <button id="menu-start" type="button" class="menu-button menu-button-primary">시작</button>
-                <button id="menu-settings" type="button" class="menu-button">설정</button>
-                <button id="menu-scores" type="button" class="menu-button">점수</button>
-            </nav>
+        <div id="title-screen" class="screen-overlay">
+            <div class="screen-card title-card">
+                <p class="title-kicker">ARCADE 3D</p>
+                <h1 class="title-logo">GALAGA</h1>
+                <p class="title-tagline">우주 격납고 출격 대기 중</p>
+                <nav class="title-menu" aria-label="메인 메뉴">
+                    <button id="menu-start" type="button" class="menu-button menu-button-primary">시작</button>
+                    <button id="menu-settings" type="button" class="menu-button">설정</button>
+                    <button id="menu-scores" type="button" class="menu-button">점수</button>
+                </nav>
+            </div>
         </div>
-    </div>
 
-    <div id="scores-screen" class="screen-overlay hidden">
-        <div class="screen-card">
-            <h2 class="screen-heading">점수 기록</h2>
-            <p id="scores-high-score" class="scores-highlight">최고 점수: 0</p>
-            <p id="scores-difficulty" class="scores-meta">난이도: Easy</p>
-            <p class="scores-note">최고 점수는 브라우저에 저장됩니다.</p>
-            <button id="scores-back" type="button" class="menu-button">돌아가기</button>
+        <div id="scores-screen" class="screen-overlay hidden">
+            <div class="screen-card">
+                <h2 class="screen-heading">점수 기록</h2>
+                <p id="scores-high-score" class="scores-highlight">최고 점수: 0</p>
+                <p id="scores-difficulty" class="scores-meta">난이도: Easy</p>
+                <p class="scores-note">최고 점수는 브라우저에 저장됩니다.</p>
+                <button id="scores-back" type="button" class="menu-button">돌아가기</button>
+            </div>
         </div>
-    </div>
 
-    <aside id="settings-panel" class="settings-panel hidden">
-        <h2 class="screen-heading">게임 설정</h2>
+        <aside id="settings-panel" class="settings-panel hidden">
+            <h2 class="screen-heading">게임 설정</h2>
 
-        <label for="control-mode-select">조작 방식</label>
-        <select id="control-mode-select" class="settings-select">
-            <option value="touch">터치 (좌/우 영역)</option>
-            <option value="sensor">기울기 센서</option>
-        </select>
+            <label for="control-mode-select">조작 방식</label>
+            <select id="control-mode-select" class="settings-select">
+                <option value="touch">터치 (좌/우 영역)</option>
+                <option value="sensor">기울기 센서</option>
+            </select>
 
-        <label for="difficulty-select">난이도</label>
-        <select id="difficulty-select" class="settings-select">
-            <option value="easy">Easy</option>
-            <option value="normal">Normal</option>
-            <option value="hard">Hard</option>
-            <option value="veryHard">Very Hard</option>
-            <option value="hell">Hell</option>
-        </select>
+            <label for="difficulty-select">난이도</label>
+            <select id="difficulty-select" class="settings-select">
+                <option value="easy">Easy</option>
+                <option value="normal">Normal</option>
+                <option value="hard">Hard</option>
+                <option value="veryHard">Very Hard</option>
+                <option value="hell">Hell</option>
+            </select>
 
-        <label for="player-speed-input">플레이어 이동 속도: <span id="player-speed-value"></span></label>
-        <input id="player-speed-input" type="range" min="1" max="8" step="1">
+            <label for="player-speed-input">플레이어 이동 속도: <span id="player-speed-value"></span></label>
+            <input id="player-speed-input" type="range" min="1" max="8" step="1">
 
-        <label for="enemy-speed-input">적 이동 속도: <span id="enemy-speed-value"></span></label>
-        <input id="enemy-speed-input" type="range" min="1" max="6" step="0.5">
+            <label for="enemy-speed-input">적 이동 속도: <span id="enemy-speed-value"></span></label>
+            <input id="enemy-speed-input" type="range" min="1" max="6" step="0.5">
 
-        <label for="bullet-speed-input">총알 속도: <span id="bullet-speed-value"></span></label>
-        <input id="bullet-speed-input" type="range" min="2" max="10" step="0.5">
+            <label for="bullet-speed-input">총알 속도: <span id="bullet-speed-value"></span></label>
+            <input id="bullet-speed-input" type="range" min="2" max="10" step="0.5">
 
-        <label for="enemy-spawn-input">적 등장 간격: <span id="enemy-spawn-value"></span></label>
-        <input id="enemy-spawn-input" type="range" min="40" max="320" step="10">
+            <label for="enemy-spawn-input">적 등장 간격: <span id="enemy-spawn-value"></span></label>
+            <input id="enemy-spawn-input" type="range" min="40" max="320" step="10">
 
-        <label for="bullet-interval-input">자동 발사 간격: <span id="bullet-interval-value"></span></label>
-        <input id="bullet-interval-input" type="range" min="8" max="50" step="1">
+            <label for="bullet-interval-input">자동 발사 간격: <span id="bullet-interval-value"></span></label>
+            <input id="bullet-interval-input" type="range" min="8" max="50" step="1">
 
-        <label for="sensor-deadzone-input">기울기 민감도: <span id="sensor-deadzone-value"></span></label>
-        <input id="sensor-deadzone-input" type="range" min="0.1" max="1.5" step="0.1">
+            <label for="sensor-deadzone-input">기울기 민감도: <span id="sensor-deadzone-value"></span></label>
+            <input id="sensor-deadzone-input" type="range" min="0.1" max="1.5" step="0.1">
 
-        <div class="settings-actions">
-            <button id="settings-reset" type="button" class="menu-button menu-button-muted">기본값 복원</button>
-            <button id="settings-back" type="button" class="menu-button">돌아가기</button>
-        </div>
-    </aside>
+            <div class="settings-actions">
+                <button id="settings-reset" type="button" class="menu-button menu-button-muted">기본값 복원</button>
+                <button id="settings-back" type="button" class="menu-button">돌아가기</button>
+            </div>
+        </aside>
 
-    <div id="game-over" class="screen-overlay hidden">
-        <div class="screen-card">
-            <p id="game-over-title">게임 오버</p>
-            <p id="final-score">최종 점수: 0</p>
-            <button id="restart-button" type="button" class="menu-button menu-button-primary">다시 시작</button>
-            <button id="gameover-menu-button" type="button" class="menu-button">메인 메뉴</button>
+        <div id="game-over" class="screen-overlay hidden">
+            <div class="screen-card">
+                <p id="game-over-title">게임 오버</p>
+                <p id="final-score">최종 점수: 0</p>
+                <button id="restart-button" type="button" class="menu-button menu-button-primary">다시 시작</button>
+                <button id="gameover-menu-button" type="button" class="menu-button">메인 메뉴</button>
+            </div>
         </div>
     </div>
 
