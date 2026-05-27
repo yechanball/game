@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Galaga Arcade 3D</title>
     <link rel="stylesheet" href="./main.css" type="text/css">
 </head>
@@ -41,6 +41,12 @@
 
     <aside id="settings-panel" class="settings-panel hidden">
         <h2 class="screen-heading">게임 설정</h2>
+
+        <label for="control-mode-select">조작 방식</label>
+        <select id="control-mode-select" class="settings-select">
+            <option value="touch">터치 (좌/우 영역)</option>
+            <option value="sensor">기울기 센서</option>
+        </select>
 
         <label for="difficulty-select">난이도</label>
         <select id="difficulty-select" class="settings-select">
@@ -84,6 +90,7 @@
         </div>
     </div>
 
+    <script src="gameplay.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

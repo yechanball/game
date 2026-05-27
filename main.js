@@ -18,6 +18,7 @@ var gameOverMenuButton = document.getElementById('gameover-menu-button');
 var settingsPanel = document.getElementById('settings-panel');
 var settingsBackButton = document.getElementById('settings-back');
 var settingsResetButton = document.getElementById('settings-reset');
+var controlModeSelect = document.getElementById('control-mode-select');
 var difficultySelect = document.getElementById('difficulty-select');
 var playerSpeedInput = document.getElementById('player-speed-input');
 var enemySpeedInput = document.getElementById('enemy-speed-input');
@@ -32,7 +33,7 @@ var enemySpawnValue = document.getElementById('enemy-spawn-value');
 var bulletIntervalValue = document.getElementById('bullet-interval-value');
 var sensorDeadzoneValue = document.getElementById('sensor-deadzone-value');
 
-var SETTINGS_STORAGE_KEY = "galaga-game-settings-v2";
+var SETTINGS_STORAGE_KEY = "galaga-game-settings-v3";
 var HIGH_SCORE_STORAGE_KEY = "galaga-high-score-v1";
 var DEFAULT_DIFFICULTY = "easy";
 var DIFFICULTY_LABELS = {
@@ -81,16 +82,14 @@ var DIFFICULTY_PRESETS = {
 };
 var defaultGameConfig = Object.assign({
     difficulty: DEFAULT_DIFFICULTY,
+    controlMode: "touch",
     sensorDeadzone: 0.5
 }, DIFFICULTY_PRESETS[DEFAULT_DIFFICULTY]);
 
 var gameConfig = loadGameConfig();
 
-canvas.width = 300;
-canvas.height = window.innerHeight - 100;
-
-var shipStartX = 135;
-var shipStartY = canvas.height - 50;
+var shipStartX = 0;
+var shipStartY = 0;
 
 var stars = [];
 var particles = [];
@@ -386,27 +385,6 @@ class Bullet {
     }
 }
 
-class Enemy {
-    constructor(){
-        this.x = Math.floor(Math.random() * 10) * 30;
-        this.y = 0;
-        this.width = 30;
-        this.height = 30;
-        this.wobblePhase = Math.random() * Math.PI * 2;
-        var palettes = [
-            {top: "#ff7edb", bottom: "#b60068", glow: "#ff4fd8"},
-            {top: "#ffc857", bottom: "#c45c00", glow: "#ffb347"},
-            {top: "#9dff6a", bottom: "#239b2d", glow: "#7df95b"}
-        ];
-        var pick = palettes[Math.floor(Math.random() * palettes.length)];
-        this.topColor = pick.top;
-        this.bottomColor = pick.bottom;
-        this.glowColor = pick.glow;
-    }
-    draw(){
-        drawEnemyShip(this);
-    }
-}
 
 var timer = 0;
 var score = 0;
@@ -453,7 +431,8 @@ function normalizeGameConfig(rawConfig){
         bulletSpeed: clampNumber(candidate.bulletSpeed, 2, 10, preset.bulletSpeed),
         enemySpawnWindow: Math.round(clampNumber(candidate.enemySpawnWindow, 40, 320, preset.enemySpawnWindow)),
         bulletInterval: Math.round(clampNumber(candidate.bulletInterval, 8, 50, preset.bulletInterval)),
-        sensorDeadzone: clampNumber(candidate.sensorDeadzone, 0.1, 1.5, defaultGameConfig.sensorDeadzone)
+        sensorDeadzone: clampNumber(candidate.sensorDeadzone, 0.1, 1.5, defaultGameConfig.sensorDeadzone),
+        controlMode: candidate.controlMode === "sensor" ? "sensor" : "touch"
     };
 }
 
@@ -558,6 +537,9 @@ function resetInputState(){
     upKey = false;
     rightKey = false;
     downKey = false;
+    if(window.Gameplay){
+        Gameplay.clearTouch();
+    }
 }
 
 function setGameOverVisible(isVisible){
@@ -615,6 +597,9 @@ function updateSettingValueLabels(){
 }
 
 function syncSettingInputs(){
+    if(controlModeSelect){
+        controlModeSelect.value = gameConfig.controlMode;
+    }
     if(difficultySelect){
         difficultySelect.value = gameConfig.difficulty;
     }
@@ -782,8 +767,13 @@ function startTakeoffSequence(){
     score = 0;
     enemyArr = [];
     bulletArr = [];
+    if(window.Gameplay){
+        Gameplay.resetCombatState();
+    }
     resetInputState();
     initVisualEffects();
+    shipStartX = canvas.width / 2 - Ship.width / 2;
+    shipStartY = canvas.height - 56;
     Ship.x = shipStartX;
     Ship.y = canvas.height + 50;
     cancelAnimationFrame(takeoffAnimation);
@@ -799,6 +789,7 @@ function takeoffFrame(){
     drawArcadeBackground();
     takeoffProgress = Math.min(1, takeoffProgress + 0.018);
     var startY = canvas.height + 50;
+    shipStartY = canvas.height - 56;
     Ship.y = startY - (startY - shipStartY) * easeOutCubic(takeoffProgress);
     drawPlayerShip(Ship);
     if(takeoffProgress >= 1){
@@ -845,6 +836,7 @@ function bindSettingInput(inputElement, settingKey){
 function resetGameConfigToDefault(){
     applyDifficultyPreset(DEFAULT_DIFFICULTY, false);
     gameConfig.sensorDeadzone = defaultGameConfig.sensorDeadzone;
+    gameConfig.controlMode = defaultGameConfig.controlMode;
     gameConfig = normalizeGameConfig(gameConfig);
     syncSettingInputs();
     saveGameConfig();
@@ -863,6 +855,14 @@ function initializeSettingsUI(){
     bindSettingInput(enemySpawnInput, "enemySpawnWindow");
     bindSettingInput(bulletIntervalInput, "bulletInterval");
     bindSettingInput(sensorDeadzoneInput, "sensorDeadzone");
+
+    if(controlModeSelect){
+        controlModeSelect.addEventListener("change", function(){
+            gameConfig.controlMode = controlModeSelect.value === "sensor" ? "sensor" : "touch";
+            saveGameConfig();
+            resetInputState();
+        });
+    }
 
     if(difficultySelect){
         difficultySelect.addEventListener("change", function(){
@@ -902,8 +902,13 @@ function resetGameState(){
     score = 0;
     enemyArr = [];
     bulletArr = [];
+    if(window.Gameplay){
+        Gameplay.resetCombatState();
+    }
     nextEnemySpawnAt = randomEnemyDelay();
     nextBulletAt = gameConfig.bulletInterval;
+    shipStartX = canvas.width / 2 - Ship.width / 2;
+    shipStartY = canvas.height - 56;
     Ship.x = shipStartX;
     Ship.y = shipStartY;
     gameStopped = false;
@@ -921,29 +926,24 @@ function FrameAction(){
     animation = requestAnimationFrame(FrameAction);
     timer++;
     updateScoreText();
+    if(window.Gameplay){
+        Gameplay.updatePowerupTimers();
+    }
 
     drawArcadeBackground();
     var shake = getScreenShakeOffset();
     ctx.save();
     ctx.translate(shake.x, shake.y);
 
-    if(timer >= nextEnemySpawnAt){
-        var enemy = new Enemy();
-        enemyArr.push(enemy);
+    if(timer >= nextEnemySpawnAt && window.Gameplay){
+        var spawnType = Gameplay.pickSpawnType();
+        enemyArr.push(Gameplay.createEnemy(spawnType));
         nextEnemySpawnAt = timer + randomEnemyDelay();
     }
 
-    for(var i = enemyArr.length - 1; i >= 0; i--){
-        var currentEnemy = enemyArr[i];
-        currentEnemy.y += gameConfig.enemySpeed;
-        currentEnemy.x += 3 * (2 - Math.floor(Math.random() * 5));
-
-        if(currentEnemy.y > canvas.height){
-            enemyArr.splice(i, 1);
-            continue;
-        }
-
-        if(checkCrash(Ship, currentEnemy)){
+    if(window.Gameplay){
+        var enemyResult = Gameplay.updateEnemies();
+        if(enemyResult === "crash"){
             triggerVibration([500, 200, 500, 200, 500]);
             ctx.restore();
             updateAndDrawParticles();
@@ -951,54 +951,26 @@ function FrameAction(){
             stopGame();
             return;
         }
-
-        currentEnemy.draw();
-    }
-
-    if(timer >= nextBulletAt){
-        var bullet = new Bullet();
-        bulletArr.push(bullet);
-        nextBulletAt = timer + gameConfig.bulletInterval;
-    }
-
-    for(var bulletIndex = bulletArr.length - 1; bulletIndex >= 0; bulletIndex--){
-        var currentBullet = bulletArr[bulletIndex];
-        currentBullet.y -= gameConfig.bulletSpeed;
-
-        if(currentBullet.y < 0){
-            bulletArr.splice(bulletIndex, 1);
-            continue;
+        var bulletResult = Gameplay.updateEnemyBullets();
+        if(bulletResult === "crash"){
+            triggerVibration([500, 200, 500, 200, 500]);
+            ctx.restore();
+            updateAndDrawParticles();
+            decayScreenShake();
+            stopGame();
+            return;
         }
-
-        var hitEnemy = false;
-        for(var enemyIndex = enemyArr.length - 1; enemyIndex >= 0; enemyIndex--){
-            if(checkCrash(currentBullet, enemyArr[enemyIndex])){
-                triggerVibration([100]);
-                spawnHitExplosion(enemyArr[enemyIndex]);
-                enemyArr.splice(enemyIndex, 1);
-                bulletArr.splice(bulletIndex, 1);
-                score++;
-                hitEnemy = true;
-                break;
-            }
-        }
-
-        if(!hitEnemy){
-            currentBullet.draw();
-        }
+        Gameplay.updateItems();
     }
 
-    if(leftKey == true && Ship.x > 0){
-        Ship.x -= gameConfig.playerSpeed;
+    if(timer >= nextBulletAt && window.Gameplay){
+        Gameplay.spawnPlayerBullets();
+        nextBulletAt = timer + Gameplay.getFireInterval();
     }
-    if(rightKey == true && Ship.x < (canvas.width - Ship.width)){
-        Ship.x += gameConfig.playerSpeed;
-    }
-    if(upKey == true && Ship.y > 0){
-        Ship.y -= gameConfig.playerSpeed;
-    }
-    if(downKey == true && Ship.y < (canvas.height - Ship.height)){
-        Ship.y += gameConfig.playerSpeed;
+
+    if(window.Gameplay){
+        Gameplay.updatePlayerBullets();
+        Gameplay.applyMovementKeys();
     }
 
     Ship.draw();
@@ -1124,6 +1096,9 @@ function initializeGravitySensor(){
             if(gamePhase !== "playing" || gameStopped || isSettingsInputFocused()){
                 return;
             }
+            if(gameConfig.controlMode !== "sensor"){
+                return;
+            }
 
             var sensorDeadzone = gameConfig.sensorDeadzone;
             if(gravitySensor.x > sensorDeadzone){
@@ -1153,6 +1128,21 @@ function initializeGravitySensor(){
     } catch (error) {
         console.warn("GravitySensor is unavailable:", error);
     }
+}
+
+window.canvas = canvas;
+window.ctx = ctx;
+window.Ship = Ship;
+window.shipStartX = shipStartX;
+window.shipStartY = shipStartY;
+
+if(window.Gameplay){
+    Gameplay.resizeCanvas();
+    shipStartX = canvas.width / 2 - Ship.width / 2;
+    shipStartY = canvas.height - 56;
+    Ship.x = shipStartX;
+    Ship.y = shipStartY;
+    Gameplay.initTouchControls();
 }
 
 initializeSettingsUI();
